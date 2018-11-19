@@ -1,6 +1,6 @@
 """
 Module containing model mixin classes that the user need to use in order
-to define user-defined tables for Measurements and Flows
+to define user-defined tables for Measurements and Analyses
 """
 from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy.orm import relationship
@@ -44,10 +44,10 @@ class MeasurementMixin(object):
             session.delete(file)
 
 
-class FlowMixin(object):
+class AnalysisMixin(object):
     """
-    A Sympathy for data analysis flow
-    This is a mixin class for a user-defined Flow table
+    A Sympathy for data analysis
+    This is a mixin class for a user-defined Analysis table
     """
     id = Column(Integer, primary_key=True)
     label = Column(String(64))
@@ -55,15 +55,15 @@ class FlowMixin(object):
 
     @declared_attr
     def input(cls):
-        return relationship('FlowInput', backref='flow')
+        return relationship('AnalysisInput', backref='analysis')
 
     @declared_attr
     def output(cls):
-        return relationship('FlowOutput', backref='flow')
+        return relationship('AnalysisOutput', backref='analysis')
 
     @declared_attr
     def jobs(cls):
-        return relationship('Job', backref='flow')
+        return relationship('Job', backref='analysis')
 
     @property
     def meta_data(self):
@@ -72,7 +72,7 @@ class FlowMixin(object):
     @meta_data.setter
     def meta_data(self, value):
         if value:
-            raise MetaDataException("Flow table does not have any metadata")
+            raise MetaDataException("Analysis table does not have any metadata")
         return
 
     def clean_up(self, session):

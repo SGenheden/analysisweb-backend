@@ -7,16 +7,16 @@ from flask_restful.fields import Integer, List, Nested, String
 from werkzeug.utils import secure_filename
 
 from analysisweb.api import db
-from analysisweb_user.models import Flow, FlowInput, FlowOutput
+from analysisweb_user.models import Analysis, AnalysisInput, AnalysisOutput
 from . import (ResourceBase, MetaResource, ResourceInvalidInputException,
                ResourceForbiddenActionException, ResourceNotFoundException, IDField)
 
 
-class FlowResource(ResourceBase):
+class AnalysisResource(ResourceBase):
 
-    db_table = Flow
+    db_table = Analysis
 
-    flow_inputoutput = {
+    analysis_inputoutput = {
         "label": String,
         "type": String
     }
@@ -24,24 +24,24 @@ class FlowResource(ResourceBase):
     fields = {
         "id": Integer,
         "label": String,
-        "syx_file": String(attribute=lambda x: "files/flows/{}/{}".format(x.id, x.syx_file)),
+        "syx_file": String(attribute=lambda x: "files/analyses/{}/{}".format(x.id, x.syx_file)),
         "meta_data": String,
-        "input": List(Nested(flow_inputoutput)),
-        "output": List(Nested(flow_inputoutput)),
+        "input": List(Nested(analysis_inputoutput)),
+        "output": List(Nested(analysis_inputoutput)),
         "jobs": List(IDField)
     }
 
     def get(self, id):
         """
-        Receive a flow
+        Receive a analysis
         ---
-        summary: Find a flow by ID
+        summary: Find an analysis by ID
         tags:
-            - flows
+            - analyses
         parameters:
             -   name: id
                 in: path
-                description: ID of flow to return
+                description: ID of an analysis to return
                 required: true
                 schema:
                     type: integer
@@ -51,11 +51,11 @@ class FlowResource(ResourceBase):
                 content:
                     application/json:
                         schema:
-                            $ref: "#/components/schemas/Flow"
+                            $ref: "#/components/schemas/Analysis"
             400:
                 description: Invalid ID supplied
             404:
-                description: Flow not found
+                description: Analysis not found
         """
         try:
             resource = self.get_resource(id)
@@ -65,31 +65,31 @@ class FlowResource(ResourceBase):
 
     def delete(self, id):
         """
-        Delete a flow
+        Delete an analysis
         ---
-        summary: Deletes a flow
+        summary: Deletes an analysis
         tags:
-            - flows
+            - analyses
         parameters:
             -   name: id
                 in: path
-                description: ID of flow to return
+                description: ID of analysis to return
                 required: true
                 schema:
                     type: integer
         responses:
             200:
-                description: Flow deleted and returned
+                description: Analysis deleted and returned
                 content:
                     application/json:
                         schema:
-                            $ref: "#/components/schemas/Flow"
+                            $ref: "#/components/schemas/Analysis"
             400:
                 description: Invalid ID supplied
             404:
-                description: Flow not found
+                description: Analysis not found
             405:
-                description: Cannot delete flow associated with a job
+                description: Cannot delete analysis associated with a job
         """
         try:
             resource = self.get_resource(id)
@@ -97,21 +97,21 @@ class FlowResource(ResourceBase):
             return {"status": str(e)}, e.response_code
 
         try:
-            return self.delete_resource(current_app.config['FLOW_FILES_FOLDER'], resource)
+            return self.delete_resource(current_app.config['ANALYSIS_FILES_FOLDER'], resource)
         except ResourceForbiddenActionException as e:
             return {"status": str(e)}, e.response_code
 
     def put(self, id):
         """
-        Update a flow
+        Update an analysis
         ---
-        summary: Updates a flow with new data
+        summary: Updates an analysis with new data
         tags:
-            - flows
+            - analyses
         parameters:
             -   name: id
                 in: path
-                description: ID of flow to return
+                description: ID of analysis to return
                 required: true
                 schema:
                     type: integer
@@ -125,26 +125,26 @@ class FlowResource(ResourceBase):
                             input:
                                 type: array
                                 items:
-                                    $ref: "#/components/schemas/FlowInput"
+                                    $ref: "#/components/schemas/AnalysisInput"
                             output:
                                 type: array
                                 items:
-                                    $ref: "#/components/schemas/FlowInput"
+                                    $ref: "#/components/schemas/AnalysisInput"
                             meta_data:
                                 type: string
                             syx_file:
                                 $ref: "#/components/schemas/File"
         responses:
             200:
-                description: flow updated and returned
+                description: analysis updated and returned
                 content:
                     application/json:
                         schema:
-                            $ref: "#/components/schemas/Flow"
+                            $ref: "#/components/schemas/Analysis"
             400:
                 description: Invalid ID supplied or invalid input
             404:
-                description: Flow not found
+                description: Analysis not found
         """
         try:
             resource = self.get_resource(id)
@@ -152,37 +152,37 @@ class FlowResource(ResourceBase):
             return {"status": str(e)}, e.response_code
 
         try:
-            self._update_flow(resource)
+            self._update_analysis(resource)
         except ResourceInvalidInputException as e:
             return {"status": str(e)}, e.response_code
         return self.dump_resource(resource), 200
 
-    def _update_flow(self, resource):
+    def _update_analysis(self, resource):
 
         if resource.jobs:
             self._validate_form_data(resource)
             self._update_io_labels(resource)
         else:
             input_list, output_list = self._remove_previous_io(resource)
-            self.add_flow_io(resource, input_list, output_list)
+            self.add_analysis_io(resource, input_list, output_list)
 
             if "syx_file" in request.form:
                 if len(request.files) != 1:
                     raise ResourceInvalidInputException("Missing input")
-                self.set_flow_syx(list(request.files.values())[0], resource)
+                self.set_analysis_syx(list(request.files.values())[0], resource)
 
         resource.label = request.form.get("label", resource.label)
         self.load_metadata(request.form.get("meta_data", None), resource)
 
     @staticmethod
-    def add_flow_io(flow, input_list, output_list):
+    def add_analysis_io(analysis, input_list, output_list):
         """
-        Add input and output templates to a Flow
+        Add input and output templates to a Analysis
 
         Parameters
         ----------
-        flow: Flow
-            the flow for which to add the templates
+        analysis: Analysis
+            the analysis for which to add the templates
         input_list: list
             a list of serialized JSONs with the input templates
         output_list
@@ -201,7 +201,7 @@ class FlowResource(ResourceBase):
             elif item['type'].lower() not in ["value", "file"]:
                 raise ResourceInvalidInputException("Input type most be either 'value' or 'file'")
 
-            db_obj = FlowInput(label=item['label'], type=item['type'], flow=flow)
+            db_obj = AnalysisInput(label=item['label'], type=item['type'], analysis=analysis)
             db.session.add(db_obj)
 
         for item in output_list:
@@ -212,20 +212,20 @@ class FlowResource(ResourceBase):
             elif item['type'].lower() not in ["table", "figure"]:
                 raise ResourceInvalidInputException("Output type most be either 'table' or 'figure'")
 
-            db_obj = FlowOutput(label=item['label'], type=item['type'], flow=flow)
+            db_obj = AnalysisOutput(label=item['label'], type=item['type'], analysis=analysis)
             db.session.add(db_obj)
 
     @staticmethod
-    def set_flow_syx(file, flow):
+    def set_analysis_syx(file, analysis):
         """
-        Set the syx file for a flow
+        Set the syx file for a analysis
 
         Parameters
         ----------
         file: werkzeug.FileObject
             the file to upload and store
-        flow: Flow
-            the flow for which to add the syx file
+        analysis: Analysis
+            the analysis for which to add the syx file
 
         Returns
         -------
@@ -234,12 +234,12 @@ class FlowResource(ResourceBase):
         """
         filename = secure_filename(file.filename)
         if not filename.lower().endswith('.syx'):
-            raise ResourceInvalidInputException("Flow must be a .syx-file")
+            raise ResourceInvalidInputException("Analysis must be a .syx-file")
 
-        file_folder = os.path.join(current_app.config['FLOW_FILES_FOLDER'], str(flow.id))
+        file_folder = os.path.join(current_app.config['ANALYSIS_FILES_FOLDER'], str(analysis.id))
         os.makedirs(file_folder)
         file.save(os.path.join(file_folder, filename))
-        flow.syx_file = filename
+        analysis.syx_file = filename
 
     @staticmethod
     def _remove_previous_io(resource):
@@ -266,7 +266,7 @@ class FlowResource(ResourceBase):
             for item, db_input in zip(request.form.getlist("input"), resource.input):
                 item = json.loads(item.replace("'", '"'))
                 if "type" in item and item["type"].lower() != db_input.type.lower():
-                    raise ResourceInvalidInputException("Cannot change type of input for flow associated with job")
+                    raise ResourceInvalidInputException("Cannot change type of input for analysis associated with job")
 
                 db_input.label = item.get("label", db_input.label)
 
@@ -274,32 +274,32 @@ class FlowResource(ResourceBase):
             for item, db_output in zip(request.form.getlist("output"), resource.output):
                 item = json.loads(item.replace("'", '"'))
                 if "type" in item and item["type"].lower() != db_output.type.lower():
-                    raise ResourceInvalidInputException("Cannot change type of output for flow associated with job")
+                    raise ResourceInvalidInputException("Cannot change type of output for analysis associated with job")
 
                 db_output.label = item.get("label", db_output.label)
 
     @staticmethod
     def _validate_form_data(resource):
-        # Special rules apply if flow is associated with job
+        # Special rules apply if analysis is associated with job
         if "input" in request.form and len(request.form.getlist('input')) != len(resource.input):
-            raise ResourceInvalidInputException("Cannot add/remove input for flow associated with job")
+            raise ResourceInvalidInputException("Cannot add/remove input for analysis associated with job")
 
         if "output" in request.form and len(request.form.getlist('output')) != len(resource.output):
-            raise ResourceInvalidInputException("Cannot add/remove output for flow associated with job")
+            raise ResourceInvalidInputException("Cannot add/remove output for analysis associated with job")
 
 
-class FlowListResource(ResourceBase):
+class AnalysisListResource(ResourceBase):
 
-    db_table = Flow
-    fields = FlowResource.fields
+    db_table = Analysis
+    fields = AnalysisResource.fields
 
     def get(self):
         """
-        Obtain a list of flows
+        Obtain a list of analyses
         ---
-        summary: Retrieve a list of flows
+        summary: Retrieve a list of analyses
         tags:
-            - flows
+            - analyses
         responses:
             200:
                 description: OK
@@ -308,17 +308,17 @@ class FlowListResource(ResourceBase):
                         schema:
                             type: array
                             items:
-                                $ref: "#/components/schemas/Flow"
+                                $ref: "#/components/schemas/Analysis"
         """
         return self.get_all(), 200
 
     def post(self):
         """
-        Add a new flow
+        Add a new analysis
         ---
-        summary: Add a new flow
+        summary: Add a new analysis
         tags:
-            - flows
+            - analyses
         requestBody:
             content:
                 multipart/form-data:
@@ -329,11 +329,11 @@ class FlowListResource(ResourceBase):
                             input:
                                 type: array
                                 items:
-                                    $ref: "#/components/schemas/FlowInput"
+                                    $ref: "#/components/schemas/AnalysisInput"
                             output:
                                 type: array
                                 items:
-                                    $ref: "#/components/schemas/FlowInput"
+                                    $ref: "#/components/schemas/AnalysisInput"
                             meta_data:
                                 type: string
                             syx_file:
@@ -341,28 +341,28 @@ class FlowListResource(ResourceBase):
 
         responses:
             201:
-                description: Flow created
+                description: Analysis created
             400:
                 description: Invalid input
         """
 
         try:
-            flow_id = self._add_flow()
+            analysis_id = self._add_analysis()
         except ResourceInvalidInputException as e:
             return {"status": str(e)}, e.response_code
-        return {"status": "success", "id": flow_id}, 201
+        return {"status": "success", "id": analysis_id}, 201
 
-    def _add_flow(self):
+    def _add_analysis(self):
         self._validate_form_data()
-        f = Flow(label=request.form['label'])
+        f = Analysis(label=request.form['label'])
         db.session.add(f)
         db.session.flush()
-        flow_id = f.id
-        FlowResource.add_flow_io(f, request.form.getlist('input'), request.form.getlist('output'))
+        analysis_id = f.id
+        AnalysisResource.add_analysis_io(f, request.form.getlist('input'), request.form.getlist('output'))
         self.load_metadata(request.form.get("meta_data", "{}"), f)
-        FlowResource.set_flow_syx(list(request.files.values())[0], f)
+        AnalysisResource.set_analysis_syx(list(request.files.values())[0], f)
         db.session.commit()
-        return flow_id
+        return analysis_id
 
     @staticmethod
     def _validate_form_data():
@@ -371,7 +371,7 @@ class FlowListResource(ResourceBase):
             raise ResourceInvalidInputException("Missing input")
 
 
-class FlowMetaResource(MetaResource):
+class AnalysisMetaResource(MetaResource):
 
     def get(self):
-        return self.load_meta('flow_meta.json')
+        return self.load_meta('analysis_meta.json')

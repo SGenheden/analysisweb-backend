@@ -15,29 +15,29 @@ class MeasurementFile(db.Model):
     measurement_id = db.Column(db.Integer, db.ForeignKey('measurement.id'))
 
 
-class FlowOutput(db.Model):
+class AnalysisOutput(db.Model):
     """
-    An expected output from a flow
-    """
-    id = db.Column(db.Integer, primary_key=True)
-    label = db.Column(db.String(64))
-    type = db.Column(db.String(16))
-    flow_id = db.Column(db.Integer, db.ForeignKey('flow.id'))
-
-
-class FlowInput(db.Model):
-    """
-    An expected input to a flow
+    An expected output from a analysis
     """
     id = db.Column(db.Integer, primary_key=True)
     label = db.Column(db.String(64))
     type = db.Column(db.String(16))
-    flow_id = db.Column(db.Integer, db.ForeignKey('flow.id'))
+    analysis_id = db.Column(db.Integer, db.ForeignKey('analysis.id'))
+
+
+class AnalysisInput(db.Model):
+    """
+    An expected input to a analysis
+    """
+    id = db.Column(db.Integer, primary_key=True)
+    label = db.Column(db.String(64))
+    type = db.Column(db.String(16))
+    analysis_id = db.Column(db.Integer, db.ForeignKey('analysis.id'))
 
 
 class JobInput(db.Model):
     """
-    A specific input to an execution of a flow
+    A specific input to an execution of a analysis
     """
     id = db.Column(db.Integer, primary_key=True)
     label = db.Column(db.String(64))
@@ -47,7 +47,7 @@ class JobInput(db.Model):
 
 class JobTableOutput(db.Model):
     """
-    A specific table output from an execution of a flow
+    A specific table output from an execution of a analysis
     """
     id = db.Column(db.Integer, primary_key=True)
     label = db.Column(db.String(64))
@@ -57,7 +57,7 @@ class JobTableOutput(db.Model):
 
 class JobFigureOutput(db.Model):
     """
-    A specific figure output from an execution of a flow
+    A specific figure output from an execution of a analysis
     """
     id = db.Column(db.Integer, primary_key=True)
     label = db.Column(db.String(64))
@@ -68,7 +68,7 @@ class JobFigureOutput(db.Model):
 
 class JobReport(db.Model):
     """
-    A generated report of an execution of a flow
+    A generated report of an execution of a analysis
     """
     id = db.Column(db.Integer, primary_key=True)
     path = db.Column(db.String(512))
@@ -77,14 +77,14 @@ class JobReport(db.Model):
 
 class Job(db.Model):
     """
-    An execution of a flow
+    An execution of an analysis
     """
     id = db.Column(db.Integer, primary_key=True)
     label = db.Column(db.String(64))
     date = db.Column(db.DateTime, index=True)
     status = db.Column(db.String(16), index=True)
     log = db.Column(db.String(512))
-    flow_id = db.Column(db.Integer, db.ForeignKey('flow.id'))
+    analysis_id = db.Column(db.Integer, db.ForeignKey('analysis.id'))
     measurement_id = db.Column(db.Integer, db.ForeignKey('measurement.id'))
     input = db.relationship('JobInput', backref='job')
     table_output = db.relationship('JobTableOutput', backref='job')

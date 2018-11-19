@@ -62,7 +62,7 @@ schemas["Measurement"] = {
     }
 }
 
-schemas["FlowInput"] = {
+schemas["AnalysisInput"] = {
     "type": "object",
     "properties": {
         "label": {
@@ -75,7 +75,7 @@ schemas["FlowInput"] = {
     }
 }
 
-schemas[ "FlowOutput"] = {
+schemas[ "AnalysisOutput"] = {
     "type": "object",
     "properties": {
         "label": {
@@ -88,7 +88,7 @@ schemas[ "FlowOutput"] = {
     }
 }
 
-schemas["Flow"] = {
+schemas["Analysis"] = {
     "type": "object",
     "properties": {
         "id": {
@@ -106,13 +106,13 @@ schemas["Flow"] = {
         "input": {
             "type": "array",
             "items": {
-                "$ref": "#/components/schemas/FlowInput"
+                "$ref": "#/components/schemas/AnalysisInput"
             }
         },
         "output": {
             "type": "array",
             "items": {
-                "$ref": "#/components/schemas/FlowOutput"
+                "$ref": "#/components/schemas/AnalysisOutput"
             }
         },
         "jobs": {
@@ -147,7 +147,7 @@ schemas["Job"] = {
         "log": {
             "type": "string",
         },
-        "flow": {
+        "analysis": {
             "type": "object",
             "properties": {
                 "id": {
@@ -207,7 +207,7 @@ swagger_template = {
     },
     "tags" : [
         {"name": "measurements"},
-        {"name": "flows"},
+        {"name": "analyses"},
         {"name": "jobs"}
     ],
     "components": {

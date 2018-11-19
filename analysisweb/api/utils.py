@@ -22,19 +22,20 @@ log_template = Template(
     "</html>\n"
 )
 
+
 @celery.task()
-def sympathy_job(inp_file, flow_path, sympathy_exec, log_post_url):
+def sympathy_job(inp_file, analysis_path, sympathy_exec, log_post_url):
     """
     Run a Sympathy for data job as a Celery task in the "background"
 
     Parameters
     ----------
     inp_file: str
-        the input config file for the flow
-    flow_path: str
-        the path to the flow
+        the input config file for the analysis
+    analysis_path: str
+        the path to the analysis
     sympathy_exec: str
-        the path to the executable that runs the flow
+        the path to the executable that runs the analysis
     log_post_url: str
         the URL to the route where to log can be added
 
@@ -43,7 +44,7 @@ def sympathy_job(inp_file, flow_path, sympathy_exec, log_post_url):
     int:
         the status code of the post of the log
     """
-    output = subprocess.getoutput("bash {} {} {}".format(sympathy_exec, flow_path, inp_file))
+    output = subprocess.getoutput("bash {} {} {}".format(sympathy_exec, analysis_path, inp_file))
     temp_path = tempfile.mkstemp()[1]
     with open(temp_path, "w") as f:
         f.write(log_template.render(lines=output.split("\n")))

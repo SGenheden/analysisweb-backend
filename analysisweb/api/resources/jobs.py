@@ -8,7 +8,7 @@ from flask_restful.fields import Integer, List, Raw, String, Nested
 from werkzeug.utils import secure_filename
 
 from analysisweb.api import db
-from analysisweb_user.models import Measurement, Flow, Job, JobInput, JobFigureOutput, JobTableOutput, JobReport
+from analysisweb_user.models import Measurement, Analysis, Job, JobInput, JobFigureOutput, JobTableOutput, JobReport
 from . import (ResourceBase, ResourceInvalidInputException,
                ResourceForbiddenActionException, ResourceNotFoundException, IDField)
 import app.utils as utils
@@ -54,7 +54,7 @@ class JobResource(ResourceBase):
         "date": String(attribute=lambda x: x.date.strftime("%Y-%m-%d %H:%M")),
         "status": String,
         "log": String(attribute=lambda x: "files/job/{}/{}".format(x.id, x.log) if x.log else ""),
-        "flow": IDField,
+        "analysis": IDField,
         "measurement": IDField,
         "input": List(Nested(job_inputfile)),
         "table_output": List(Nested(job_outputfile)),
@@ -171,7 +171,7 @@ class JobListResource(ResourceBase):
                                 type: string
                             measurement:
                                 type: integer
-                            flow:
+                            analysis:
                                 type: integer
                             input:
                                 type: array
@@ -185,9 +185,9 @@ class JobListResource(ResourceBase):
             202:
                 description: Job was successfully added to the queue
             400:
-                description: Id of measurement or flow is invalid, or invalid input
+                description: Id of measurement or analysis is invalid, or invalid input
             404:
-                description: Id of measurement or flow is not existing
+                description: Id of measurement or analysis is not existing
         """
         try:
             job_id = self._add_job()
@@ -202,10 +202,10 @@ class JobListResource(ResourceBase):
             measurement = self.get_resource(request.form['measurement'], Measurement)
         else:
             measurement = None
-        flow = self.get_resource(request.form['flow'], Flow)
-        self._validate_job_input(flow, measurement)
+            analysis = self.get_resource(request.form['analysis'], Analysis)
+        self._validate_job_input(analysis, measurement)
 
-        job = Job(label=request.form['label'], measurement=measurement, flow=flow)
+        job = Job(label=request.form['label'], measurement=measurement, analysis=analysis)
         db.session.add(job)
         db.session.flush()
         job_id = job.id
@@ -213,19 +213,19 @@ class JobListResource(ResourceBase):
         for f in ['reports', 'output', 'input']:
             file_folder = os.path.join(current_app.config['JOB_FILES_FOLDER'], str(job_id), f)
             os.makedirs(file_folder)
-        self._add_job_input(job, flow, file_folder)
+        self._add_job_input(job, analysis, file_folder)
 
         job.status = "SUBMITTED"
         job.date = datetime.datetime.now()
         db.session.commit()
-        self._initiate_job(job, flow, measurement)
+        self._initiate_job(job, analysis, measurement)
         return job_id
 
     @staticmethod
-    def _add_job_input(job, flow, path):
+    def _add_job_input(job, analysis, path):
         input_list = request.form.getlist('input')
         files = request.files
-        for flow_input, item in zip(flow.input, input_list):
+        for analysis_input, item in zip(analysis.input, input_list):
             if item.startswith("$file:"):
                 file_key = item[6:]
                 file = files.get(file_key)
@@ -237,40 +237,40 @@ class JobListResource(ResourceBase):
                     value = file_key
             else:
                 value = item
-            db_obj = JobInput(value=value, job=job, label=flow_input.label)
+            db_obj = JobInput(value=value, job=job, label=analysis_input.label)
             db.session.add(db_obj)
 
     @staticmethod
-    def _initiate_job(job, flow, measurement):
+    def _initiate_job(job, analysis, measurement):
         base_folder = os.path.join(current_app.config['JOB_FILES_FOLDER'], str(job.id))
-        inp = JobListResource._make_input_json(job, flow, measurement)
+        inp = JobListResource._make_input_json(job, analysis, measurement)
         inp_file = os.path.join(base_folder, "inp.json")
         with open(inp_file, 'w') as f:
             json.dump(inp, f)
-        syx_file = os.path.join(current_app.config['FLOW_FILES_FOLDER'], str(flow.id), flow.syx_file)
+        syx_file = os.path.join(current_app.config['FLOW_FILES_FOLDER'], str(analysis.id), analysis.syx_file)
         post_url = current_app.config['SERVER_URL'] + "job/{}/log".format(job.id)
         utils.sympathy_job.delay(inp_file, syx_file, current_app.config['SYMPATHY_EXEC'], post_url)
 
     @staticmethod
-    def _make_input_json(job, flow, measurement):
+    def _make_input_json(job, analysis, measurement):
         # TODO replace actual paths to the upload folder with URLs to the server
         input = []
-        for job_input, flow_input in zip(job.input, flow.input):
-            if flow_input.type == "value":
+        for job_input, analysis_input in zip(job.input, analysis.input):
+            if analysis_input.type == "value":
                 value = job_input.value
             else:
                 if job_input.value.startswith("$measurement"):
                     value = ""
                     for f in measurement.files:
-                        if f.label == flow_input.label:
+                        if f.label == analysis_input.label:
                             value = os.path.join(current_app.config['MEASUREMENT_FILES_FOLDER'],
                                                  str(measurement.id), f.path)
                             break
                 else:
                     value = os.path.join(current_app.config['JOB_FILES_FOLDER'],
                                          str(job.id), "input", job_input.value)
-            input.append({"label": flow_input.label, "value": value})
-        output = [{"type": o.type, "label": o.label} for o in flow.output]
+            input.append({"label": analysis_input.label, "value": value})
+        output = [{"type": o.type, "label": o.label} for o in analysis.output]
         post_url = current_app.config['SERVER_URL'] + "job/{}/output".format(job.id)
         return {
             "input": input,
@@ -281,14 +281,14 @@ class JobListResource(ResourceBase):
 
     @staticmethod
     def _validate_form_data():
-        if "label" not in request.form or "flow" not in request.form\
+        if "label" not in request.form or "analysis" not in request.form\
                 or "input" not in request.form:
             raise ResourceInvalidInputException("Missing input")
 
     @staticmethod
-    def _validate_job_input(flow, measurement):
+    def _validate_job_input(analysis, measurement):
         ninput = len(request.form.getlist('input'))
-        nexpected = len(flow.input)
+        nexpected = len(analysis.input)
         if ninput != nexpected:
             raise ResourceInvalidInputException(
                 "Too few or too many input values, expecting {} but got {}".format(nexpected, ninput))
@@ -299,17 +299,17 @@ class JobListResource(ResourceBase):
         else:
             measurement_labels = []
 
-        for i, (flow_input, item) in enumerate(zip(flow.input, input_list)):
+        for i, (analysis_input, item) in enumerate(zip(analysis.input, input_list)):
             is_ref = item.startswith("$")
-            if flow_input.type.lower() is "value" and is_ref:
+            if analysis_input.type.lower() is "value" and is_ref:
                 raise ResourceInvalidInputException(
                     "Expected a 'value' input at position {} but found a reference".format(i))
             if item.startswith('$measurement') and measurement is None:
                 raise ResourceInvalidInputException(
                     "Found a reference to a measurement in input but no measurement given")
-            elif item.startswith('$measurement') and flow_input.label not in measurement_labels:
+            elif item.startswith('$measurement') and analysis_input.label not in measurement_labels:
                 raise ResourceInvalidInputException(
-                    "The flow input label '{}' does not correspond to  any measurement label".format(flow_input.label))
+                    "The analysis input label '{}' does not correspond to  any measurement label".format(analysis_input.label))
 
 
 class JobOutputResource(ResourceBase):
@@ -372,7 +372,7 @@ class JobOutputResource(ResourceBase):
         if not request.files:
             raise ResourceInvalidInputException("No output files in request body")
 
-        types = {o.label: o.type for o in resource.flow.output}
+        types = {o.label: o.type for o in resource.analysis.output}
         file_folder = os.path.join(current_app.config['JOB_FILES_FOLDER'], str(resource.id), "output")
         for output_label, output_type in types.items():
             if output_type == "table":
