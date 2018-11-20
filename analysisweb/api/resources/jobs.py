@@ -202,7 +202,7 @@ class JobListResource(ResourceBase):
             measurement = self.get_resource(request.form['measurement'], Measurement)
         else:
             measurement = None
-            analysis = self.get_resource(request.form['analysis'], Analysis)
+        analysis = self.get_resource(request.form['analysis'], Analysis)
         self._validate_job_input(analysis, measurement)
 
         job = Job(label=request.form['label'], measurement=measurement, analysis=analysis)
@@ -247,7 +247,7 @@ class JobListResource(ResourceBase):
         inp_file = os.path.join(base_folder, "inp.json")
         with open(inp_file, 'w') as f:
             json.dump(inp, f)
-        syx_file = os.path.join(current_app.config['FLOW_FILES_FOLDER'], str(analysis.id), analysis.syx_file)
+        syx_file = os.path.join(current_app.config['ANALYSIS_FILES_FOLDER'], str(analysis.id), analysis.syx_file)
         post_url = current_app.config['SERVER_URL'] + "job/{}/log".format(job.id)
         utils.sympathy_job.delay(inp_file, syx_file, current_app.config['SYMPATHY_EXEC'], post_url)
 

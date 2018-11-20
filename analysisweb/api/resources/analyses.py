@@ -24,7 +24,7 @@ class AnalysisResource(ResourceBase):
     fields = {
         "id": Integer,
         "label": String,
-        "syx_file": String(attribute=lambda x: "files/analyses/{}/{}".format(x.id, x.syx_file)),
+        "syx_file": String(attribute=lambda x: "files/analysis/{}/{}".format(x.id, x.syx_file)),
         "meta_data": String,
         "input": List(Nested(analysis_inputoutput)),
         "output": List(Nested(analysis_inputoutput)),
