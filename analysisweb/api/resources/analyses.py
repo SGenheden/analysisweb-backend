@@ -1,4 +1,3 @@
-
 import os
 import json
 
@@ -8,30 +7,35 @@ from werkzeug.utils import secure_filename
 
 from analysisweb.api import db
 from analysisweb_user.models import Analysis, AnalysisInput, AnalysisOutput
-from . import (ResourceBase, MetaResource, ResourceInvalidInputException,
-               ResourceForbiddenActionException, ResourceNotFoundException, IDField)
+from . import (
+    ResourceBase,
+    MetaResource,
+    ResourceInvalidInputException,
+    ResourceForbiddenActionException,
+    ResourceNotFoundException,
+    IDField,
+)
 
 
 class AnalysisResource(ResourceBase):
 
     db_table = Analysis
 
-    analysis_inputoutput = {
-        "label": String,
-        "type": String
-    }
+    analysis_inputoutput = {"label": String, "type": String}
 
     fields = {
         "id": Integer,
         "label": String,
-        "syx_file": String(attribute=lambda x: "files/analysis/{}/{}".format(x.id, x.syx_file)),
+        "syx_file": String(
+            attribute=lambda x: "files/analysis/{}/{}".format(x.id, x.syx_file)
+        ),
         "meta_data": String,
         "input": List(Nested(analysis_inputoutput)),
         "output": List(Nested(analysis_inputoutput)),
-        "jobs": List(IDField)
+        "jobs": List(IDField),
     }
 
-    def get(self, id):
+    def get(self, id_):
         """
         Receive a analysis
         ---
@@ -39,7 +43,7 @@ class AnalysisResource(ResourceBase):
         tags:
             - analyses
         parameters:
-            -   name: id
+            -   name: id_
                 in: path
                 description: ID of an analysis to return
                 required: true
@@ -58,12 +62,12 @@ class AnalysisResource(ResourceBase):
                 description: Analysis not found
         """
         try:
-            resource = self.get_resource(id)
+            resource = self.get_resource(id_)
         except (ResourceInvalidInputException, ResourceNotFoundException) as e:
             return {"status": str(e)}, e.response_code
         return self.dump_resource(resource), 200
 
-    def delete(self, id):
+    def delete(self, id_):
         """
         Delete an analysis
         ---
@@ -71,7 +75,7 @@ class AnalysisResource(ResourceBase):
         tags:
             - analyses
         parameters:
-            -   name: id
+            -   name: id_
                 in: path
                 description: ID of analysis to return
                 required: true
@@ -92,16 +96,18 @@ class AnalysisResource(ResourceBase):
                 description: Cannot delete analysis associated with a job
         """
         try:
-            resource = self.get_resource(id)
+            resource = self.get_resource(id_)
         except (ResourceInvalidInputException, ResourceNotFoundException) as e:
             return {"status": str(e)}, e.response_code
 
         try:
-            return self.delete_resource(current_app.config['ANALYSIS_FILES_FOLDER'], resource)
+            return self.delete_resource(
+                current_app.config["ANALYSIS_FILES_FOLDER"], resource
+            )
         except ResourceForbiddenActionException as e:
             return {"status": str(e)}, e.response_code
 
-    def put(self, id):
+    def put(self, id_):
         """
         Update an analysis
         ---
@@ -109,7 +115,7 @@ class AnalysisResource(ResourceBase):
         tags:
             - analyses
         parameters:
-            -   name: id
+            -   name: id_
                 in: path
                 description: ID of analysis to return
                 required: true
@@ -147,7 +153,7 @@ class AnalysisResource(ResourceBase):
                 description: Analysis not found
         """
         try:
-            resource = self.get_resource(id)
+            resource = self.get_resource(id_)
         except (ResourceInvalidInputException, ResourceNotFoundException) as e:
             return {"status": str(e)}, e.response_code
 
@@ -198,10 +204,14 @@ class AnalysisResource(ResourceBase):
 
             if "type" not in item or "label" not in item:
                 raise ResourceInvalidInputException("Missing input")
-            elif item['type'].lower() not in ["value", "file"]:
-                raise ResourceInvalidInputException("Input type most be either 'value' or 'file'")
+            elif item["type"].lower() not in ["value", "file"]:
+                raise ResourceInvalidInputException(
+                    "Input type most be either 'value' or 'file'"
+                )
 
-            db_obj = AnalysisInput(label=item['label'], type=item['type'], analysis=analysis)
+            db_obj = AnalysisInput(
+                label=item["label"], type=item["type"], analysis=analysis
+            )
             db.session.add(db_obj)
 
         for item in output_list:
@@ -209,10 +219,14 @@ class AnalysisResource(ResourceBase):
 
             if "type" not in item or "label" not in item:
                 raise ResourceInvalidInputException("Missing input")
-            elif item['type'].lower() not in ["table", "figure"]:
-                raise ResourceInvalidInputException("Output type most be either 'table' or 'figure'")
+            elif item["type"].lower() not in ["table", "figure"]:
+                raise ResourceInvalidInputException(
+                    "Output type most be either 'table' or 'figure'"
+                )
 
-            db_obj = AnalysisOutput(label=item['label'], type=item['type'], analysis=analysis)
+            db_obj = AnalysisOutput(
+                label=item["label"], type=item["type"], analysis=analysis
+            )
             db.session.add(db_obj)
 
     @staticmethod
@@ -233,10 +247,12 @@ class AnalysisResource(ResourceBase):
             None if successfull otherwise an error message and a return code
         """
         filename = secure_filename(file.filename)
-        if not filename.lower().endswith('.syx'):
+        if not filename.lower().endswith(".syx"):
             raise ResourceInvalidInputException("Analysis must be a .syx-file")
 
-        file_folder = os.path.join(current_app.config['ANALYSIS_FILES_FOLDER'], str(analysis.id))
+        file_folder = os.path.join(
+            current_app.config["ANALYSIS_FILES_FOLDER"], str(analysis.id)
+        )
         os.makedirs(file_folder)
         file.save(os.path.join(file_folder, filename))
         analysis.syx_file = filename
@@ -247,14 +263,14 @@ class AnalysisResource(ResourceBase):
         if "input" in request.form:
             for item in resource.input:
                 db.session.delete(item)
-            input_list = request.form.getlist('input')
+            input_list = request.form.getlist("input")
         else:
             input_list = []
 
         if "output" in request.form:
             for item in resource.output:
                 db.session.delete(item)
-            output_list = request.form.getlist('output')
+            output_list = request.form.getlist("output")
         else:
             output_list = []
         return input_list, output_list
@@ -266,7 +282,9 @@ class AnalysisResource(ResourceBase):
             for item, db_input in zip(request.form.getlist("input"), resource.input):
                 item = json.loads(item.replace("'", '"'))
                 if "type" in item and item["type"].lower() != db_input.type.lower():
-                    raise ResourceInvalidInputException("Cannot change type of input for analysis associated with job")
+                    raise ResourceInvalidInputException(
+                        "Cannot change type of input for analysis associated with job"
+                    )
 
                 db_input.label = item.get("label", db_input.label)
 
@@ -274,18 +292,28 @@ class AnalysisResource(ResourceBase):
             for item, db_output in zip(request.form.getlist("output"), resource.output):
                 item = json.loads(item.replace("'", '"'))
                 if "type" in item and item["type"].lower() != db_output.type.lower():
-                    raise ResourceInvalidInputException("Cannot change type of output for analysis associated with job")
+                    raise ResourceInvalidInputException(
+                        "Cannot change type of output for analysis associated with job"
+                    )
 
                 db_output.label = item.get("label", db_output.label)
 
     @staticmethod
     def _validate_form_data(resource):
         # Special rules apply if analysis is associated with job
-        if "input" in request.form and len(request.form.getlist('input')) != len(resource.input):
-            raise ResourceInvalidInputException("Cannot add/remove input for analysis associated with job")
+        if "input" in request.form and len(request.form.getlist("input")) != len(
+            resource.input
+        ):
+            raise ResourceInvalidInputException(
+                "Cannot add/remove input for analysis associated with job"
+            )
 
-        if "output" in request.form and len(request.form.getlist('output')) != len(resource.output):
-            raise ResourceInvalidInputException("Cannot add/remove output for analysis associated with job")
+        if "output" in request.form and len(request.form.getlist("output")) != len(
+            resource.output
+        ):
+            raise ResourceInvalidInputException(
+                "Cannot add/remove output for analysis associated with job"
+            )
 
 
 class AnalysisListResource(ResourceBase):
@@ -354,11 +382,13 @@ class AnalysisListResource(ResourceBase):
 
     def _add_analysis(self):
         self._validate_form_data()
-        f = Analysis(label=request.form['label'])
+        f = Analysis(label=request.form["label"])
         db.session.add(f)
         db.session.flush()
         analysis_id = f.id
-        AnalysisResource.add_analysis_io(f, request.form.getlist('input'), request.form.getlist('output'))
+        AnalysisResource.add_analysis_io(
+            f, request.form.getlist("input"), request.form.getlist("output")
+        )
         self.load_metadata(request.form.get("meta_data", "{}"), f)
         AnalysisResource.set_analysis_syx(list(request.files.values())[0], f)
         db.session.commit()
@@ -366,12 +396,15 @@ class AnalysisListResource(ResourceBase):
 
     @staticmethod
     def _validate_form_data():
-        if "label" not in request.form or len(request.files) != 1\
-                or "input" not in request.form or "output" not in request.form:
+        if (
+            "label" not in request.form
+            or len(request.files) != 1
+            or "input" not in request.form
+            or "output" not in request.form
+        ):
             raise ResourceInvalidInputException("Missing input")
 
 
 class AnalysisMetaResource(MetaResource):
-
     def get(self):
-        return self.load_meta('analysis_meta.json')
+        return self.load_meta("analysis_meta.json")

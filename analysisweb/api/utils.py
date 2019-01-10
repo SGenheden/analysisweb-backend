@@ -44,10 +44,12 @@ def sympathy_job(inp_file, analysis_path, sympathy_exec, log_post_url):
     int:
         the status code of the post of the log
     """
-    output = subprocess.getoutput("bash {} {} {}".format(sympathy_exec, analysis_path, inp_file))
+    output = subprocess.getoutput(
+        "bash {} {} {}".format(sympathy_exec, analysis_path, inp_file)
+    )
     temp_path = tempfile.mkstemp()[1]
     with open(temp_path, "w") as f:
         f.write(log_template.render(lines=output.split("\n")))
-    r = requests.post(log_post_url, files = {"log": open(temp_path, 'rb')})
+    r = requests.post(log_post_url, files={"log": open(temp_path, "rb")})
     os.remove(temp_path)
     return r.status_code

@@ -16,6 +16,7 @@ class MeasurementMixin(object):
     A measurement of some sort that resulted in a collection of files
     This is a mixin class for a user-defined Measurement table
     """
+
     id = Column(Integer, primary_key=True)
     start_date = Column(DateTime, index=True)
     end_date = Column(DateTime, index=True)
@@ -23,11 +24,11 @@ class MeasurementMixin(object):
 
     @declared_attr
     def files(cls):
-        return relationship('MeasurementFile', backref='measurement')
+        return relationship("MeasurementFile", backref="measurement")
 
     @declared_attr
     def jobs(cls):
-        return relationship('Job', backref='measurement')
+        return relationship("Job", backref="measurement")
 
     @property
     def meta_data(self):
@@ -49,21 +50,22 @@ class AnalysisMixin(object):
     A Sympathy for data analysis
     This is a mixin class for a user-defined Analysis table
     """
+
     id = Column(Integer, primary_key=True)
     label = Column(String(64))
     syx_file = Column(String(512))
 
     @declared_attr
     def input(cls):
-        return relationship('AnalysisInput', backref='analysis')
+        return relationship("AnalysisInput", backref="analysis")
 
     @declared_attr
     def output(cls):
-        return relationship('AnalysisOutput', backref='analysis')
+        return relationship("AnalysisOutput", backref="analysis")
 
     @declared_attr
     def jobs(cls):
-        return relationship('Job', backref='analysis')
+        return relationship("Job", backref="analysis")
 
     @property
     def meta_data(self):
@@ -76,7 +78,7 @@ class AnalysisMixin(object):
         return
 
     def clean_up(self, session):
-        for input in self.input:
-            session.delete(input)
+        for input_ in self.input:
+            session.delete(input_)
         for output in self.output:
             session.delete(output)

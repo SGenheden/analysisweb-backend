@@ -1,4 +1,3 @@
-
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
@@ -16,9 +15,10 @@ api = Api()
 cors = CORS()
 celery = Celery(__name__, broker=Config.CELERY_BROKER_URL)
 
-from . import utils # noqa
+from . import utils  # noqa
 
-from .resources.definitions import swagger_template # noqa
+from .resources.definitions import swagger_template  # noqa
+
 swagger = Swagger(template=swagger_template)
 
 

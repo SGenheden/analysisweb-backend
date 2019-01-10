@@ -1,4 +1,3 @@
-
 import json
 import os
 import shutil
@@ -41,17 +40,19 @@ class ResourceBase(Resource):
     def get_all(self):
         return [marshal(m, self.fields) for m in self.db_table.query.all()]
 
-    def get_resource(self, id, table=None):
+    def get_resource(self, id_, table=None):
         table = table or self.db_table
         try:
-            id = int(id)
+            id_ = int(id_)
         except ValueError:
             raise ResourceInvalidInputException("Item ID is not a valid integer")
 
         try:
-            resource = table.query.get(id)
+            resource = table.query.get(id_)
         except Exception as e:  # noqa
-            raise ResourceNotFoundException("Item could not be retrieved from database: {}".format(e))
+            raise ResourceNotFoundException(
+                "Item could not be retrieved from database: {}".format(e)
+            )
 
         if resource is None:
             raise ResourceNotFoundException("Item does not exists in the database")
@@ -60,7 +61,9 @@ class ResourceBase(Resource):
 
     def delete_resource(self, base_path, db_resource):
         if hasattr(db_resource, "jobs") and db_resource.jobs:
-            raise ResourceForbiddenActionException("Item cannot be removed because it is associated with a job")
+            raise ResourceForbiddenActionException(
+                "Item cannot be removed because it is associated with a job"
+            )
         json_resource = self.dump_resource(db_resource)
         shutil.rmtree(os.path.join(base_path, str(db_resource.id)))
         db_resource.clean_up(db.session)
@@ -86,14 +89,15 @@ class ResourceBase(Resource):
 
 
 class MetaResource(Resource):
-
     @staticmethod
     def load_meta(filename):
         path = os.path.abspath(os.path.dirname(analysisweb_user.__file__))
         meta_filename = os.path.join(path, filename)
         with open(meta_filename, "r") as f:
             meta = json.load(f)
-        current_app.config['JSON_SORT_KEYS'] = False  # This is not recommended by Flask but done here locally
+        current_app.config[
+            "JSON_SORT_KEYS"
+        ] = False  # This is not recommended by Flask but done here locally
         meta = jsonify(meta)
-        current_app.config['JSON_SORT_KEYS'] = True
+        current_app.config["JSON_SORT_KEYS"] = True
         return meta
