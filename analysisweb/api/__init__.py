@@ -1,3 +1,5 @@
+import os
+
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
@@ -6,6 +8,7 @@ from flasgger import Swagger
 from flask_cors import CORS
 from celery import Celery
 
+from analysisweb import package_path
 from analysisweb.api.config import Config
 
 
@@ -30,7 +33,7 @@ def create_app():
     from . import routes
 
     db.init_app(app)
-    migrate.init_app(app, db)
+    migrate.init_app(app, db, directory=str(package_path / "migrations"))
     api.init_app(app)
     swagger.init_app(app)
     cors.init_app(app)
